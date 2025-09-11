@@ -1,0 +1,29 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "lint": {
+      "outputs": []
+    },
+    "typecheck": {
+      "outputs": []
+    },
+    "test": {
+      "outputs": ["coverage/**"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**"],
+      "env": ["NODE_ENV"]
+    },
+    "docker": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
+    "codegen": {
+      "outputs": ["packages/shared/src/generated/**", "docs/api-specs.md"]
+    },
+    "dev": {
+      "cache": false
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "sih-safety-platform",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=20.0.0" },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "codegen": "turbo run codegen"
+  },
+  "devDependencies": {
+    "eslint": "8.57.0",
+    "prettier": "^3.2.5",
+    "turbo": "^2.0.0"
+  }
+}

@@ -1,0 +1,61 @@
+openapi: 3.0.3
+info:
+  title: SIH API
+  version: 1.0.0
+paths:
+  /incidents:
+    get:
+      parameters:
+        - in: query
+          name: bbox
+          schema:
+            type: string
+            example: "minLon,minLat,maxLon,maxLat"
+        - in: query
+          name: status
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [open, triaged, closed]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentListResponse"
+components:
+  schemas:
+    IncidentListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Incident"
+        nextCursor:
+          type: string
+          nullable: true
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [open, triaged, closed]
+        coords:
+          type: array
+          items: { type: number }
+          minItems: 2
+          maxItems: 2
+        createdAt:
+          type: string
+          format: date-time

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/telemetry.v1.json",
+  "title": "Telemetry v1",
+  "type": "object",
+  "properties": {
+    "deviceId": { "type": "string", "format": "uuid" },
+    "ts": { "type": "string", "format": "date-time" },
+    "lat": { "type": "number" },
+    "lon": { "type": "number" },
+    "hr": { "type": "integer" },
+    "accel": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+    "sos": { "type": "boolean" },
+    "battery": { "type": "number" },
+    "sig": { "type": "string" }
+  },
+  "required": ["deviceId", "ts", "lat", "lon"],
+  "additionalProperties": false
+}

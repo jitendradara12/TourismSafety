@@ -1,0 +1,26 @@
+# Code owners per app/package; update as the team grows.
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners
+* @platform-team
+
+# Apps
+/apps/web/ @platform-team
+/apps/mobile/ @platform-team
+/apps/api-gateway/ @platform-team
+/apps/auth-svc/ @platform-team
+/apps/alert-svc/ @platform-team
+/apps/risk-svc/ @platform-team
+/apps/media-svc/ @platform-team
+/apps/iot-gateway/ @platform-team
+/apps/ml-serving/ @platform-team
+
+# Packages
+/packages/ui/ @platform-team
+/packages/shared/ @platform-team
+/packages/proto/ @platform-team
+/packages/schemas/ @platform-team
+
+# Infra & Docs
+/infra/ @platform-team
+/docs/ @platform-team

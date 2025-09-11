@@ -1,0 +1,18 @@
+type Incident {
+  id: ID!
+  type: String!
+  severity: String!
+  status: String!
+  coords: [Float!]!
+  createdAt: String!
+}
+
+type IncidentConnection {
+  items: [Incident!]!
+  nextCursor: String
+}
+
+type Query {
+  incidents(cursor: String, limit: Int): IncidentConnection!
+  incident(id: ID!): Incident
+}

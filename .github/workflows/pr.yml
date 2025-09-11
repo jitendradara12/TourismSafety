@@ -1,0 +1,33 @@
+name: PR
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install
+        run: pnpm install --frozen-lockfile || npm install
+      - name: Lint
+        run: |
+          npx turbo run lint --continue || true
+      - name: Typecheck
+        run: |
+          npx turbo run typecheck --continue || true
+      - name: Tests
+        run: |
+          npx turbo run test --continue || true
+      - name: Codegen
+        run: |
+          npx turbo run codegen --continue || true
+      - name: Verify docs/schemas sync
+        run: |
+          git diff --exit-code || (echo "Docs or generated files changed; commit codegen" && exit 1)

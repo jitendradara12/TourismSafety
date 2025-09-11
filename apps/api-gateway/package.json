@@ -1,0 +1,38 @@
+{
+  "name": "@sih/api-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migration:run": "node ./node_modules/typeorm/cli.js migration:run -d dist/db/data-source.js",
+    "migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d dist/db/data-source.js",
+    "seed": "node dist/seed.js",
+    "db:prepare": "pnpm build && pnpm migration:run && pnpm seed"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "zod": "^3.23.8",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "dotenv": "^16.4.5",
+    "pg": "^8.11.5",
+    "typeorm": "^0.3.20",
+    "socket.io": "^4.7.5",
+    "reflect-metadata": "^0.2.2",
+    "express-rate-limit": "^7.3.1"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.30",
+    "ts-node": "^10.9.2",
+    "@types/cors": "^2.8.17"
+  }
+}
