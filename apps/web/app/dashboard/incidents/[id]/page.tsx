@@ -1,47 +1,75 @@
-import React from 'react';
+import React from "react";
+import CopyButton from "../../../../components/CopyButton";
+import { notFound } from "next/navigation";
+import UpdateIncidentStatus from "../../../../components/UpdateIncidentStatus";
+import CreatedAt from "../../../../components/CreatedAt";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 async function getIncident(id: string) {
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   try {
-    const res = await fetch(`${base}/incidents/${encodeURIComponent(id)}`, { cache: 'no-store' });
-    if (!res.ok) return { base, ok: false, data: null } as const;
-    const data = await res.json();
-    return { base, ok: true, data } as const;
+    const res = await fetch(`${API_BASE}/incidents/${id}`, { cache: "no-store" });
+    if (res.status === 404) return null;
+    if (!res.ok) return { id };
+    return await res.json();
   } catch {
-    return { base: base, ok: false, data: null } as const;
+    return { id };
   }
 }
 
-export default async function IncidentDetail({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const { base, ok, data } = await getIncident(id);
+export default async function IncidentDetailPage({ params }: { params: { id: string } }) {
+  const id = params?.id;
+  if (!id) return notFound();
+  const data = await getIncident(id);
+  if (data === null) return notFound();
+
   return (
-    <main style={{ padding: 16 }}>
-      <a href="/dashboard/incidents" style={{ display: 'inline-block', marginBottom: 8, color: '#2563eb' }}>&larr; Back</a>
-      <h1 style={{ fontSize: 22, fontWeight: 600 }}>Incident {id.slice(0,8)}</h1>
-      {!ok && (
-        <div style={{ marginTop: 12, padding: 12, border: '1px solid #fee2e2', background: '#fef2f2', color: '#7f1d1d', borderRadius: 8 }}>
-          Failed to load incident from {base}
+    <main style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Incident Detail</h1>
+        <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+          <a href={`${API_BASE}/incidents/${id}`} style={{ color: '#2563eb', textDecoration: 'none', fontSize: 12 }} target="_blank">Open JSON</a>
+          <CopyButton value={id} label="Copy ID" />
         </div>
-      )}
-      {ok && data && (
-        <section style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between' }}>
-            <strong>Details</strong>
-            <a href={`${base}/incidents/${id}`} target="_blank" rel="noopener noreferrer" style={{ color: '#6b7280', fontSize: 12 }}>Open API</a>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <a href="/dashboard/incidents" style={{ color: '#2563eb', textDecoration: 'none', fontSize: 12 }}>← Back to list</a>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <strong>ID:</strong> <span style={{ fontFamily: "monospace" }}>{id}</span>
+      </div>
+      {"status" in (data as any) && <div style={{ marginBottom: 8 }}><strong>Status:</strong> {(data as any).status}</div>}
+      <div style={{ marginBottom: 12 }}>
+        <UpdateIncidentStatus apiBase={API_BASE} id={id} current={(data as any)?.status} />
+      </div>
+      {"type" in (data as any) && <div style={{ marginBottom: 8 }}><strong>Type:</strong> {(data as any).type}</div>}
+      {"severity" in (data as any) && <div style={{ marginBottom: 8 }}><strong>Severity:</strong> {(data as any).severity}</div>}
+      {(() => {
+        const created = (data as any)?.created_at || (data as any)?.createdAt;
+        // coords is [lon, lat]
+        const lon = (data as any)?.lon ?? (Array.isArray((data as any)?.coords) ? (data as any).coords[0] : undefined);
+        const lat = (data as any)?.lat ?? (Array.isArray((data as any)?.coords) ? (data as any).coords[1] : undefined);
+        const parts: React.ReactNode[] = [];
+        if (created) parts.push(<span key="c">Created: <CreatedAt iso={created} /></span>);
+        if (typeof lat === 'number' && typeof lon === 'number') {
+          const href = `https://maps.google.com/?q=${lat},${lon}`;
+          parts.push(<a key="m" href={href} target="_blank" style={{ color: '#2563eb', textDecoration: 'none' }}>Open in Maps</a>);
+          parts.push(<CopyButton key="cp" value={`${lat},${lon}`} label="Copy coords" />);
+        }
+        return parts.length > 0 ? (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, fontSize: 12, color: '#6b7280' }}>
+            {parts.map((p, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span aria-hidden>•</span>}
+                {p}
+              </React.Fragment>
+            ))}
           </div>
-          <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div><span style={{ color: '#6b7280' }}>Type:</span> <strong>{data.type}</strong></div>
-            <div><span style={{ color: '#6b7280' }}>Severity:</span> <strong style={{ textTransform: 'capitalize' }}>{data.severity}</strong></div>
-            <div><span style={{ color: '#6b7280' }}>Status:</span> <span style={{ textTransform: 'capitalize' }}>{data.status}</span></div>
-            <div><span style={{ color: '#6b7280' }}>Created:</span> {new Date(data.createdAt).toLocaleString()}</div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <span style={{ color: '#6b7280' }}>Location:</span> {data.coords[1]}, {data.coords[0]} {' '}
-              <a href={`https://www.google.com/maps?q=${data.coords[1]},${data.coords[0]}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Open in Maps</a>
-            </div>
-          </div>
-        </section>
-      )}
+        ) : null;
+      })()}
+      <p style={{ color: "#6b7280", marginTop: 12 }}>
+        Demo-safe: shows basic info even if API is offline.
+      </p>
     </main>
   );
 }

@@ -17,17 +17,20 @@ pnpm -C apps/web build
 pnpm -C apps/api-gateway build
 ```
 
-Run API (requires Postgres reachable at DATABASE_URL; see apps/api-gateway/.env.example):
+Run API and Web from the repo root (dev mode):
 ```bash
-cd apps/api-gateway
-pnpm db:prepare   # builds + migrations + seed
-node dist/index.js
-```
+# Start API (serves demo data if DB isn't up yet)
+pnpm run api:start
+# Health check
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:4000/healthz
 
-Run web:
-```bash
-cd ../../apps/web
-pnpm start
+# Start Web in dev mode (use PORT env)
+PORT=3037 pnpm run web:dev
+# Health check
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:3037/healthz
+
+# Open the dashboard
+# http://localhost:3037/dashboard/incidents
 ```
 
 Smokes:

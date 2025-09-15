@@ -10,7 +10,14 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "codegen": "turbo run codegen"
+    "codegen": "turbo run codegen",
+    "api:start": "pnpm --filter @sih/api-gateway dev",
+    "api:build": "pnpm --filter @sih/api-gateway build",
+    "api:serve": "pnpm --filter @sih/api-gateway start",
+    "web:dev": "pnpm --filter @sih/web dev",
+    "web:build": "pnpm --filter @sih/web build",
+    "web:start": "pnpm --filter @sih/web start",
+    "demo": "turbo run dev --parallel --filter=@sih/api-gateway --filter=@sih/web"
   },
   "devDependencies": {
     "eslint": "8.57.0",

@@ -38,7 +38,9 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
   return next(err);
 });
 
-app.get('/healthz', (_req, res) => res.json({ status: 'ok' }));
+app.get('/healthz', (_req, res) =>
+  res.json({ status: 'ok', demo: !AppDataSource.isInitialized, uptime: process.uptime() }),
+);
 app.get('/readyz', async (_req, res) => {
   try {
     await AppDataSource.query('SELECT 1');
@@ -50,11 +52,13 @@ app.get('/readyz', async (_req, res) => {
 
 app.get('/', (_req, res) => res.send('SIH API Gateway up'));
 
-// init DB then mount routes
+// Mount routes regardless of DB status; routes handle demo mode if DB is not initialized
+app.use('/incidents', incidentsRouter);
+
+// Initialize DB asynchronously
 AppDataSource.initialize()
   .then(() => {
     console.log('Database initialized');
-    app.use('/incidents', incidentsRouter);
   })
   .catch((err) => {
     console.error('Database initialization failed', err);

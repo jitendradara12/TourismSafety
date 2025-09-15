@@ -25,6 +25,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IncidentListResponse"
+    post:
+      description: Create a new incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncidentCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentCreateResponse"
+  /incidents/export:
+    get:
+      description: Export incidents as CSV
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [open, triaged, closed]
+        - in: query
+          name: severity
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [low, medium, high, critical]
+        - in: query
+          name: bbox
+          schema:
+            type: string
+            example: "minLon,minLat,maxLon,maxLat"
+      responses:
+        "200":
+          description: CSV content
+          content:
+            text/csv:
+              schema:
+                type: string
+  /incidents/{id}:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+        "404": { description: Not Found }
+    patch:
+      description: Update incident (status only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncidentPatchRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+        "400": { description: Bad Request }
+        "404": { description: Not Found }
 components:
   schemas:
     IncidentListResponse:
@@ -59,3 +141,26 @@ components:
         createdAt:
           type: string
           format: date-time
+    IncidentCreateRequest:
+      type: object
+      required: [type, severity, location]
+      properties:
+        type: { type: string }
+        severity: { type: string, enum: [low, medium, high, critical] }
+        description: { type: string }
+        location:
+          type: object
+          required: [lat, lon]
+          properties:
+            lat: { type: number }
+            lon: { type: number }
+    IncidentCreateResponse:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [open, triaged, closed] }
+        createdAt: { type: string, format: date-time }
+    IncidentPatchRequest:
+      type: object
+      properties:
+        status: { type: string, enum: [open, triaged, closed] }

@@ -1,68 +1,95 @@
 "use client";
-import React, { useState } from 'react';
 
-export default function ReportIncidentPage() {
-  const [type, setType] = useState('fire');
-  const [severity, setSeverity] = useState('low');
-  const [lat, setLat] = useState('');
-  const [lon, setLon] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
-  const [ok, setOk] = useState<boolean | null>(null);
+import React from "react";
+import { useRouter } from "next/navigation";
+import LocationPicker from "../../../components/LocationPicker";
 
-  const useMyLocation = async () => {
-    if (!navigator.geolocation) return setMsg('Geolocation not supported');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(String(pos.coords.latitude));
-        setLon(String(pos.coords.longitude));
-      },
-      () => setMsg('Unable to get location'),
-      { enableHighAccuracy: true, timeout: 5000 },
-    );
-  };
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-  const submit = async (e: React.FormEvent) => {
+export default function ReportPage() {
+  const router = useRouter();
+  const [type, setType] = React.useState("general");
+  const [severity, setSeverity] = React.useState("low");
+  const [description, setDescription] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [msg, setMsg] = React.useState<string | null>(null);
+  const [chosenLoc, setChosenLoc] = React.useState<{ lat: number; lon: number } | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
     setMsg(null);
-    const latNum = Number(lat);
-    const lonNum = Number(lon);
-    if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) {
-      setMsg('Please enter valid numeric coordinates');
-      return;
+
+    try {
+      const coords = chosenLoc ?? await new Promise<{ lat: number; lon: number }>((resolve) => {
+        if (typeof navigator !== "undefined" && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+            () => resolve({ lat: 19.076, lon: 72.8777 }) // fallback (Mumbai)
+          );
+        } else {
+          resolve({ lat: 19.076, lon: 72.8777 });
+        }
+      });
+
+      let res = await fetch(`${API_BASE}/incidents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, severity, description, location: coords }),
+      });
+      // One safe retry against localhost in case NEXT_PUBLIC_API_URL is misconfigured during demo
+      if (!res.ok) {
+        const alt = "http://localhost:4000";
+        if ((API_BASE || "").replace(/\/$/, "") !== alt) {
+          try {
+            res = await fetch(`${alt}/incidents`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ type, severity, description, location: coords }),
+            });
+          } catch {
+            // ignore and fall through to error handling
+          }
+        }
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          throw new Error(`Submit failed (${res.status}) ${t}`);
+        }
+      }
+
+      setMsg("Report submitted");
+      router.push("/dashboard/incidents");
+      router.refresh();
+    } catch (err: any) {
+      setMsg(err?.message ?? "Failed to submit");
+      console.error(err);
+    } finally {
+      setBusy(false);
     }
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-    const res = await fetch(`${base}/incidents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, severity, location: { lat: latNum, lon: lonNum } }),
-    });
-    if (res.ok) {
-      const j = await res.json();
-      setMsg(`Created incident ${j.id}`);
-      setOk(true);
-      setLat('');
-      setLon('');
-    } else {
-      setMsg('Failed to create incident');
-      setOk(false);
-    }
-  };
+  }
 
   return (
-    <main style={{ padding: 16 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 600 }}>Report Incident</h1>
-      <form onSubmit={submit} style={{ display: 'grid', gap: 12, maxWidth: 420, marginTop: 16 }}>
+    <main style={{ padding: 24 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Report an Incident</h1>
+      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 480 }}>
         <label>
-          Type
-          <select value={type} onChange={(e) => setType(e.target.value)} style={{ display: 'block', width: '100%', padding: 8 }}>
-            <option value="fire">fire</option>
-            <option value="flood">flood</option>
-            <option value="earthquake">earthquake</option>
-          </select>
+          <div>Type</div>
+          <input
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            placeholder="Type"
+            style={{ border: "1px solid #d1d5db", padding: 8, borderRadius: 6, width: "100%" }}
+            required
+          />
         </label>
         <label>
-          Severity
-          <select value={severity} onChange={(e) => setSeverity(e.target.value)} style={{ display: 'block', width: '100%', padding: 8 }}>
+          <div>Severity</div>
+          <select
+            value={severity}
+            onChange={(e) => setSeverity(e.target.value)}
+            style={{ border: "1px solid #d1d5db", padding: 8, borderRadius: 6, width: "100%" }}
+          >
             <option value="low">low</option>
             <option value="medium">medium</option>
             <option value="high">high</option>
@@ -70,30 +97,39 @@ export default function ReportIncidentPage() {
           </select>
         </label>
         <label>
-          Latitude
-          <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="e.g. 37.7749" style={{ width: '100%', padding: 8 }} />
+          <div>Description</div>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe the incident"
+            rows={4}
+            style={{ border: "1px solid #d1d5db", padding: 8, borderRadius: 6, width: "100%" }}
+          />
         </label>
         <label>
-          Longitude
-          <input value={lon} onChange={(e) => setLon(e.target.value)} placeholder="e.g. -122.4194" style={{ width: '100%', padding: 8 }} />
+          <div>Location</div>
+          <LocationPicker value={chosenLoc} onChange={setChosenLoc} />
         </label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" onClick={useMyLocation} style={{ padding: '8px 12px', background: '#e5e7eb', borderRadius: 6 }}>Use my location</button>
-          <button type="submit" style={{ padding: '8px 12px', background: '#111827', color: 'white', borderRadius: 6 }}>Submit</button>
+        <button
+          type="submit"
+          disabled={busy}
+          style={{
+            padding: "8px 12px",
+            background: "#2563eb",
+            color: "white",
+            borderRadius: 6,
+            border: "none",
+            cursor: busy ? "not-allowed" : "pointer",
+            opacity: busy ? 0.7 : 1,
+          }}
+        >
+          {busy ? "Submitting…" : "Submit"}
+        </button>
+        {msg && <div style={{ fontSize: 12, color: "#6b7280" }}>{msg}</div>}
+        <div style={{ fontSize: 12, color: "#6b7280" }}>
+          Demo note: uses your location if permitted; otherwise a safe fallback.
         </div>
       </form>
-      {msg && (
-        <div role="status" style={{
-          marginTop: 12,
-          padding: 12,
-          borderRadius: 8,
-          border: ok ? '1px solid #d1fae5' : '1px solid #fee2e2',
-          background: ok ? '#ecfdf5' : '#fef2f2',
-          color: ok ? '#065f46' : '#7f1d1d',
-        }}>
-          {msg}
-        </div>
-      )}
     </main>
   );
 }

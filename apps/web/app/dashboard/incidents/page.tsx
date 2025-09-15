@@ -1,4 +1,21 @@
 import React from 'react';
+import Link from 'next/link';
+import CreateTestIncidentButton from '../../../components/CreateTestIncidentButton';
+import DashboardExtrasClient from '../../../components/DashboardExtrasClient';
+import SeedDemoIncidentsButton from '../../../components/SeedDemoIncidentsButton';
+import ExportIncidentsCsvButton from '../../../components/ExportIncidentsCsvButton';
+import CopyExportUrlButton from '../../../components/CopyExportUrlButton';
+import AutoRefreshToggle from '../../../components/AutoRefreshToggle';
+import RefreshNowButton from '../../../components/RefreshNowButton';
+import ExportIncidentsJsonButton from '../../../components/ExportIncidentsJsonButton';
+import ExportIncidentsGeoJsonButton from '../../../components/ExportIncidentsGeoJsonButton';
+import StaticMapPreviewButton from '../../../components/StaticMapPreviewButton';
+import IncidentsMapClient from '../../../components/IncidentsMapClient';
+import CreatedAt from '../../../components/CreatedAt';
+import CopyJsonUrlButton from '../../../components/CopyJsonUrlButton';
+import CopyPageUrlButton from '../../../components/CopyPageUrlButton';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 type IncidentItem = {
   id: string;
@@ -6,25 +23,37 @@ type IncidentItem = {
   severity: string;
   status: string;
   coords: [number, number];
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string;
+  lat?: number;
+  lon?: number;
 };
 
-async function getIncidents(opts?: { createdBefore?: string; createdAfter?: string; status?: string[]; severity?: string[]; bbox?: string }): Promise<{ base: string; items: IncidentItem[]; nextCursor: string | null; ok: boolean }>{
+async function getIncidents(opts?: { createdBefore?: string; createdAfter?: string; status?: string[]; severity?: string[]; bbox?: string; limit?: number }): Promise<{ base: string; items: IncidentItem[]; nextCursor: string | null; ok: boolean; demo: boolean }>{
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   try {
     const qs = new URLSearchParams();
-    qs.set('limit', '20');
+    qs.set('limit', String(opts?.limit ?? 20));
     if (opts?.createdBefore) qs.set('created_before', opts.createdBefore);
     if (opts?.createdAfter) qs.set('created_after', opts.createdAfter);
     (opts?.status ?? []).forEach((s) => qs.append('status', s));
     (opts?.severity ?? []).forEach((s) => qs.append('severity', s));
     if (opts?.bbox) qs.set('bbox', opts.bbox);
     const res = await fetch(`${base}/incidents?${qs.toString()}`, { cache: 'no-store' });
-    if (!res.ok) return { base, items: [], nextCursor: null, ok: false };
+    const demoHeader = res.headers?.get?.('x-demo-mode');
+    if (!res.ok) return { base, items: [], nextCursor: null, ok: false, demo: demoHeader === 'true' };
     const data = await res.json();
-    return { base, items: (data.items ?? []) as IncidentItem[], nextCursor: data.nextCursor ?? null, ok: true };
+    return { base, items: (data.items ?? []) as IncidentItem[], nextCursor: data.nextCursor ?? null, ok: true, demo: demoHeader === 'true' };
   } catch {
-    return { base, items: [], nextCursor: null, ok: false };
+    // Frontend-only demo fallback if API is unreachable (for resilient demos)
+    const now = Date.now();
+    const demoItems: IncidentItem[] = [
+      { id: 'wf-001', type: 'theft', severity: 'medium', status: 'open', coords: [72.8777, 19.076], createdAt: new Date(now - 15 * 60 * 1000).toISOString() },
+      { id: 'wf-002', type: 'sos', severity: 'high', status: 'open', coords: [-122.4194, 37.7749], createdAt: new Date(now - 40 * 60 * 1000).toISOString() },
+      { id: 'wf-003', type: 'assault', severity: 'critical', status: 'triaged', coords: [-118.2437, 34.0522], createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString() },
+      { id: 'wf-004', type: 'fall', severity: 'low', status: 'closed', coords: [139.6503, 35.6762], createdAt: new Date(now - 3.5 * 60 * 60 * 1000).toISOString() },
+    ];
+    return { base, items: demoItems, nextCursor: null, ok: true, demo: true };
   }
 }
 
@@ -34,6 +63,10 @@ export default async function IncidentsPage({ searchParams }: { searchParams?: {
   const statusQ = searchParams?.status;
   const severityQ = searchParams?.severity;
   const bboxQ = typeof searchParams?.bbox === 'string' ? searchParams!.bbox : undefined;
+  const limitRaw = typeof searchParams?.limit === 'string' ? parseInt(searchParams!.limit, 10) : undefined;
+  const allowed = [20, 50, 100] as const;
+  const limit = allowed.includes(limitRaw as any) ? (limitRaw as 20|50|100) : 20;
+  const sort = typeof searchParams?.sort === 'string' && (searchParams!.sort === 'asc' || searchParams!.sort === 'desc') ? searchParams!.sort : 'desc';
   const status = Array.isArray(statusQ) ? statusQ as string[] : (typeof statusQ === 'string' ? [statusQ] : []);
   const severity = Array.isArray(severityQ) ? severityQ as string[] : (typeof severityQ === 'string' ? [severityQ] : []);
   const computeCreatedAfter = (label?: string) => {
@@ -46,7 +79,8 @@ export default async function IncidentsPage({ searchParams }: { searchParams?: {
     return dt.toISOString();
   };
   const createdAfter = computeCreatedAfter(since);
-  const { base, items, nextCursor, ok } = await getIncidents({ createdBefore, createdAfter, status, severity, bbox: bboxQ });
+  const { base, items: rawItems, nextCursor, ok, demo } = await getIncidents({ createdBefore, createdAfter, status, severity, bbox: bboxQ, limit });
+  const items = sort === 'asc' ? [...rawItems].reverse() : rawItems;
   const makeUrl = (params: Record<string, string | string[] | undefined>, dropCursor = true) => {
     const u = new URL('http://dummy');
     const qp = new URLSearchParams();
@@ -54,6 +88,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams?: {
       if (Array.isArray(v)) v.forEach((vv) => qp.append(k, vv));
       else if (typeof v === 'string') qp.set(k, v);
     });
+    qp.set('limit', String(limit));
     if (!dropCursor && createdBefore) qp.set('created_before', createdBefore);
     const qs = qp.toString();
     return `/dashboard/incidents${qs ? `?${qs}` : ''}`;
@@ -67,182 +102,267 @@ export default async function IncidentsPage({ searchParams }: { searchParams?: {
     ...(since ? [{ label: `since:${since}`, key: `t:${since}`, onUrl: makeUrl({ status, severity, bbox: bboxQ }, true) }] : []),
   ];
   const severityCounts = items.reduce((acc: Record<string, number>, it) => { acc[it.severity] = (acc[it.severity]||0)+1; return acc; }, {} as Record<string, number>);
+  const formatAge = (iso?: string) => {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return '';
+    const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    return `${d}d ago`;
+  };
   return (
-    <main style={{ padding: 16 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 600 }}>Incidents</h1>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#666', flexWrap: 'wrap' }}>
-        <span>Latest 20 incidents · Count: {items.length}</span>
-        <span aria-label={ok ? 'API online' : 'API unreachable'} title={ok ? 'API online' : 'API unreachable'} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 8px', borderRadius: 9999, background: '#f3f4f6', color: '#111827' }}>
-          <span style={{ width: 8, height: 8, borderRadius: 9999, background: ok ? '#10b981' : '#ef4444', boxShadow: ok ? '0 0 0 3px rgba(16,185,129,0.15)' : '0 0 0 3px rgba(239,68,68,0.15)' }} />
-          API
-        </span>
-        <span style={{ color: '#9ca3af' }}>at</span>
-        <code style={{ background: '#f9fafb', padding: '2px 6px', borderRadius: 4 }}>{base}</code>
+    <main style={{ padding: 24 }}>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Incidents</h1>
+        <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+          {demo && (
+            <span style={{ padding: '4px 8px', background: '#111827', color: 'white', borderRadius: 6, fontSize: 12 }}>
+              API DEMO
+            </span>
+          )}
+          {demo && <SeedDemoIncidentsButton apiBase={API_BASE} count={10} />}
+          <ExportIncidentsCsvButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
+          <ExportIncidentsJsonButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
+          <ExportIncidentsGeoJsonButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
+          <CopyExportUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
+          <CopyJsonUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
+          <CopyPageUrlButton />
+          <StaticMapPreviewButton items={items.map((it: any) => ({ id: it.id, coords: Array.isArray(it.coords) ? it.coords : [it.lon ?? 0, it.lat ?? 0], severity: it.severity }))} />
+          <AutoRefreshToggle />
+          <RefreshNowButton />
+          <CreateTestIncidentButton apiBase={API_BASE} />
+        </div>
+      </header>
+
+      {/* Minimal map overview (client-only SVG), no external keys required */}
+      <div style={{ marginBottom: 12 }}>
+        <IncidentsMapClient
+          items={items.map((it: any) => ({
+            id: it.id,
+            type: it.type,
+            severity: it.severity,
+            status: it.status,
+            coords: Array.isArray(it.coords) ? it.coords : ([it.lon ?? 0, it.lat ?? 0] as [number, number]),
+            createdAt: (it.createdAt ?? it.created_at ?? new Date().toISOString()) as string,
+          }))}
+          status={status}
+          severity={severity}
+          since={since}
+        />
       </div>
-      {/* Filters */}
-      <section aria-label="Filters" style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Status:</span>
-          {['open','triaged','closed'].map((s) => (
+
+      {/* API error banner (non-blocking) */}
+      {!ok && (
+        <div style={{ background: '#fef3c7', color: '#92400e', padding: 8, borderRadius: 6, border: '1px solid #fcd34d', marginBottom: 12, fontSize: 12 }}>
+          Could not reach API. Showing zero results. Try again or use demo seed if available.
+        </div>
+      )}
+
+      {/* Quick filters toolbar */}
+      <section style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+        {/* Status chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#6b7280', fontSize: 12 }}>Status:</span>
+          {["open","triaged","closed"].map((s) => (
             <a
-              key={s}
+              key={`st-${s}`}
               href={makeUrl({ status: toggle(status, s), severity, bbox: bboxQ, since }, true)}
-              style={{ padding: '4px 8px', borderRadius: 9999, textTransform: 'capitalize', background: isActive(status, s) ? '#dbeafe' : '#f3f4f6', color: isActive(status, s) ? '#1e40af' : '#111827', textDecoration: 'none' }}
-            >{s}</a>
-          ))}
-          <a href={makeUrl({ status: [], severity, bbox: bboxQ, since }, true)} style={{ padding: '4px 8px', borderRadius: 9999, fontSize: 12, background: '#f9fafb', color: '#6b7280', textDecoration: 'none' }}>Clear</a>
-        </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Severity:</span>
-          {['low','medium','high','critical'].map((s) => (
-            <a
-              key={s}
-              href={makeUrl({ status, severity: toggle(severity, s), bbox: bboxQ, since }, true)}
-              style={{ padding: '4px 8px', borderRadius: 9999, textTransform: 'capitalize', background: isActive(severity, s) ? '#fee2e2' : '#f3f4f6', color: isActive(severity, s) ? '#991b1b' : '#111827', textDecoration: 'none' }}
-            >{s}</a>
-          ))}
-          <a href={makeUrl({ status, severity: [], bbox: bboxQ, since }, true)} style={{ padding: '4px 8px', borderRadius: 9999, fontSize: 12, background: '#f9fafb', color: '#6b7280', textDecoration: 'none' }}>Clear</a>
-        </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Area:</span>
-          {/* presets: World (no bbox), SF, LA, Tokyo, Mumbai */}
-          <a href={makeUrl({ status, severity, since }, true)} style={{ padding: '4px 8px', borderRadius: 9999, background: !bboxQ ? '#e5e7eb' : '#f3f4f6', color: '#111827', textDecoration: 'none' }}>All</a>
-          <a href={makeUrl({ status, severity, bbox: '-122.55,37.70,-122.35,37.82', since }, true)} style={{ padding: '4px 8px', borderRadius: 9999, background: bboxQ === '-122.55,37.70,-122.35,37.82' ? '#e5e7eb' : '#f3f4f6', color: '#111827', textDecoration: 'none' }}>SF</a>
-          <a href={makeUrl({ status, severity, bbox: '-118.33,33.90,-118.10,34.10', since }, true)} style={{ padding: '4px 8px', borderRadius: 9999, background: bboxQ === '-118.33,33.90,-118.10,34.10' ? '#e5e7eb' : '#f3f4f6', color: '#111827', textDecoration: 'none' }}>LA</a>
-          <a href={makeUrl({ status, severity, bbox: '139.60,35.60,139.85,35.75', since }, true)} style={{ padding: '4px 8px', borderRadius: 9999, background: bboxQ === '139.60,35.60,139.85,35.75' ? '#e5e7eb' : '#f3f4f6', color: '#111827', textDecoration: 'none' }}>Tokyo</a>
-          <a href={makeUrl({ status, severity, bbox: '72.77,18.88,72.93,19.10', since }, true)} style={{ padding: '4px 8px', borderRadius: 9999, background: bboxQ === '72.77,18.88,72.93,19.10' ? '#e5e7eb' : '#f3f4f6', color: '#111827', textDecoration: 'none' }}>Mumbai</a>
-        </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Since:</span>
-          {[
-            { key: 'all', label: 'All', value: undefined },
-            { key: '1h', label: '1h', value: '1h' },
-            { key: '24h', label: '24h', value: '24h' },
-            { key: '7d', label: '7d', value: '7d' },
-          ].map((t) => (
-            <a key={t.key} href={makeUrl({ status, severity, bbox: bboxQ, since: t.value }, true)}
-               style={{ padding: '4px 8px', borderRadius: 9999, background: (since === t.value || (!since && t.value===undefined)) ? '#e5e7eb' : '#f3f4f6', color: '#111827', textDecoration: 'none' }}>{t.label}</a>
-          ))}
-        </div>
-      </section>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
-        <a href="/dashboard/incidents" style={{ display: 'inline-block', padding: '6px 10px', background: '#e5e7eb', borderRadius: 6 }}>Refresh</a>
-        <a href="/tourist/report" style={{ display: 'inline-block', padding: '6px 10px', background: '#dbeafe', color: '#1e40af', borderRadius: 6 }}>Report incident</a>
-        <a href={`${base}/incidents/export?${(() => { const q=new URLSearchParams(); status.forEach(s=>q.append('status',s)); severity.forEach(s=>q.append('severity',s)); if (bboxQ) q.set('bbox', bboxQ); if (createdAfter) q.set('created_after', createdAfter); q.set('limit','1000'); return q.toString(); })()}`}
-           style={{ display: 'inline-block', padding: '6px 10px', background: '#ecfccb', color: '#365314', borderRadius: 6, textDecoration: 'none' }}
-           rel="noopener noreferrer" target="_blank">
-          Export CSV
-        </a>
-      </div>
-      {/* Severity counts */}
-      <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {['low','medium','high','critical'].map((s) => (
-          <span key={s} style={{ padding: '2px 8px', borderRadius: 9999, background: s==='critical'? '#fee2e2' : s==='high' ? '#fef3c7' : s==='medium' ? '#fef9c3' : '#dcfce7', color: '#111827', fontSize: 12 }}>
-            {s}: {severityCounts[s] || 0}
-          </span>
-        ))}
-      </div>
-      {(activeChips.length > 0) && (
-        <div aria-label="Active filters" style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Active:</span>
-          {activeChips.map((c) => (
-            <a key={c.key} href={c.onUrl} style={{ padding: '2px 8px', borderRadius: 9999, background: '#f3f4f6', color: '#111827', textDecoration: 'none', fontSize: 12 }}>
-              {c.label} ✕
+              style={{
+                padding: '4px 8px',
+                borderRadius: 9999,
+                border: '1px solid #e5e7eb',
+                textDecoration: 'none',
+                color: isActive(status, s) ? '#111827' : '#374151',
+                background: isActive(status, s) ? '#dbeafe' : '#ffffff',
+              }}
+            >
+              {s}
             </a>
           ))}
-          <a href={makeUrl({}, true)} style={{ padding: '2px 8px', borderRadius: 9999, background: '#fee2e2', color: '#991b1b', textDecoration: 'none', fontSize: 12 }}>Reset all</a>
         </div>
-      )}
-      {/* Simple SVG map (equirectangular projection). ViewBox uses degrees for easy positioning. */}
-      <section aria-label="Incidents map" style={{ marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <strong style={{ color: '#111827' }}>Map (fast SVG)</strong>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Equirectangular · dots by severity</span>
+        {/* Severity chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#6b7280', fontSize: 12 }}>Severity:</span>
+          {["low","medium","high","critical"].map((v) => (
+            <a
+              key={`sv-${v}`}
+              href={makeUrl({ status, severity: toggle(severity, v), bbox: bboxQ, since }, true)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 9999,
+                border: '1px solid #e5e7eb',
+                textDecoration: 'none',
+                color: isActive(severity, v) ? '#111827' : '#374151',
+                background: isActive(severity, v) ? '#fee2e2' : '#ffffff',
+              }}
+            >
+              {v}
+            </a>
+          ))}
         </div>
-        <div style={{ width: '100%', height: 0, paddingBottom: '40%', position: 'relative' }}>
-          <svg viewBox="0 0 360 180" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map with incident markers" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#f9fafb' }}>
-            {/* Simple graticule */}
-            <g stroke="#e5e7eb" strokeWidth="0.5">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <line key={`v${i}`} x1={(i+1)*30} y1={0} x2={(i+1)*30} y2={180} />
-              ))}
-              {Array.from({ length: 5 }).map((_, i) => (
-                <line key={`h${i}`} x1={0} y1={(i+1)*30} x2={360} y2={(i+1)*30} />
-              ))}
-            </g>
-            {/* Border */}
-            <rect x="0" y="0" width="360" height="180" fill="none" stroke="#e5e7eb" strokeWidth="1" />
-            {/* Markers */}
-            <g>
-              {items.map((i) => {
-                const [lon, lat] = i.coords;
-                const x = Math.max(0, Math.min(360, lon + 180));
-                const y = Math.max(0, Math.min(180, 90 - lat));
-                const color = i.severity === 'critical' ? '#ef4444' : i.severity === 'high' ? '#f59e0b' : i.severity === 'medium' ? '#fbbf24' : '#10b981';
-                return (
-                  <g key={i.id}>
-                    <circle cx={x} cy={y} r={2.5} fill={color} stroke="#111827" strokeWidth={0.3} />
-                    <title>{`${i.type} (${i.severity}) @ ${lon.toFixed(2)}, ${lat.toFixed(2)}\n${new Date(i.createdAt).toLocaleString()}`}</title>
-                  </g>
-                );
-              })}
-            </g>
-            {items.length === 0 && (
-              <text x="180" y="90" textAnchor="middle" alignmentBaseline="middle" fontSize="12" fill="#9ca3af">
-                No data to display
-              </text>
-            )}
-          </svg>
+        {/* Time window chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#6b7280', fontSize: 12 }}>Since:</span>
+          {["1h","24h","7d"].map((t) => (
+            <a
+              key={`tm-${t}`}
+              href={makeUrl({ status, severity, bbox: bboxQ, since: since === t ? undefined : t }, true)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 9999,
+                border: '1px solid #e5e7eb',
+                textDecoration: 'none',
+                color: since === t ? '#111827' : '#374151',
+                background: since === t ? '#dcfce7' : '#ffffff',
+              }}
+            >
+              {t}
+            </a>
+          ))}
         </div>
-      </section>
-      {!ok && (
-        <div role="status" style={{ marginTop: 12, padding: 12, border: '1px solid #fee2e2', background: '#fef2f2', color: '#7f1d1d', borderRadius: 8 }}>
-          <strong style={{ display: 'block', marginBottom: 4 }}>API unreachable</strong>
-          <span>Make sure the backend API service is running and accessible at the URL shown above.</span>
+        {/* Sort chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#6b7280', fontSize: 12 }}>Sort:</span>
+          {[{k:'desc',label:'Newest'},{k:'asc',label:'Oldest'}].map(({k,label}) => (
+            <a
+              key={`so-${k}`}
+              href={makeUrl({ status, severity, bbox: bboxQ, since, limit: String(limit), sort: k }, true)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 9999,
+                border: '1px solid #e5e7eb',
+                textDecoration: 'none',
+                color: sort === k ? '#111827' : '#374151',
+                background: sort === k ? '#e0f2fe' : '#ffffff',
+              }}
+            >
+              {label}
+            </a>
+          ))}
         </div>
-      )}
-      <div style={{ overflowX: 'auto', marginTop: 16 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' }}>ID</th>
-              <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' }}>Type</th>
-              <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' }}>Severity</th>
-              <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' }}>Status</th>
-              <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' }}>Lon,Lat</th>
-              <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e5e7eb' }}>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((i) => (
-              <tr key={i.id}>
-                <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', fontFamily: 'monospace' }}>
-                  <a href={`/dashboard/incidents/${i.id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{i.id.slice(0, 8)}</a>
-                </td>
-                <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{i.type}</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', textTransform: 'capitalize' }}>{i.severity}</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', textTransform: 'capitalize' }}>{i.status}</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{i.coords.join(', ')}</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{new Date(i.createdAt).toLocaleString()}</td>
-              </tr>
+        {/* Page size chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#6b7280', fontSize: 12 }}>Page size:</span>
+          {[20,50,100].map((n) => (
+            <a
+              key={`lm-${n}`}
+              href={makeUrl({ status, severity, bbox: bboxQ, since, limit: String(n) }, true)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 9999,
+                border: '1px solid #e5e7eb',
+                textDecoration: 'none',
+                color: limit === n ? '#111827' : '#374151',
+                background: limit === n ? '#fef9c3' : '#ffffff',
+              }}
+            >
+              {n}
+            </a>
+          ))}
+        </div>
+        {/* Active filters summary with clear links */}
+        {activeChips.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <span style={{ color: '#6b7280', fontSize: 12 }}>Active:</span>
+            {activeChips.map((c) => (
+              <a key={c.key} href={c.onUrl} style={{ padding: '2px 8px', borderRadius: 9999, background: '#f3f4f6', color: '#111827', fontSize: 12, textDecoration: 'none' }}>
+                {c.label} ✕
+              </a>
             ))}
-            {!items.length && (
-              <tr>
-                <td colSpan={6} style={{ padding: 0 }}>
-                  <div style={{ margin: 12, padding: 16, border: '1px dashed #e5e7eb', background: '#f9fafb', color: '#6b7280', borderRadius: 8, textAlign: 'center' }}>
-                    No incidents found. Try Refresh above, or come back later.
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            <a href={makeUrl({ }, true)} style={{ marginLeft: 8, color: '#2563eb', textDecoration: 'none', fontSize: 12 }}>Clear all</a>
+          </div>
+        )}
+      </section>
+
+      {/* Results and severity summary */}
+      <div style={{ marginBottom: 8, fontSize: 12, color: '#6b7280' }}>Showing {items.length} results</div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+        {Object.entries(severityCounts).map(([sev, cnt]) => (
+          <span key={`sum-${sev}`} style={{ padding: '2px 8px', borderRadius: 9999, background: '#f3f4f6', color: '#111827', fontSize: 12 }}>{sev}: {cnt}</span>
+        ))}
       </div>
-      {ok && items.length > 0 && nextCursor && (
+
+      {items.length === 0 ? (
+        <div style={{ color: '#6b7280', padding: 16, border: '1px dashed #e5e7eb', borderRadius: 8 }}>
+          <p style={{ margin: 0 }}>No incidents match your filters.</p>
+          <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
+            <a href={makeUrl({}, true)} style={{ color: '#2563eb', textDecoration: 'none' }}>Clear filters</a>
+            <span aria-hidden>•</span>
+            <a href={`${API_BASE}/incidents`} target="_blank" style={{ color: '#2563eb', textDecoration: 'none' }}>Open JSON</a>
+          </div>
+        </div>
+      ) : (
+        <ul style={{ display: 'grid', gap: 8 }}>
+          {items.map((it: any) => (
+            <li key={it.id} style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div><strong>{it.type ?? 'incident'}</strong> • {it.severity ?? '-'} • {it.status ?? '-'}</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#6b7280' }}>{it.id}</div>
+                  {(() => {
+                    const created = (it.createdAt ?? it.created_at) as string | undefined;
+                    // API contracts: coords is [lon, lat]
+                    const lon = (it.lon ?? (Array.isArray(it.coords) ? it.coords[0] : undefined)) as number | undefined;
+                    const lat = (it.lat ?? (Array.isArray(it.coords) ? it.coords[1] : undefined)) as number | undefined;
+                    const parts: React.ReactNode[] = [];
+                    if (created) parts.push(<CreatedAt key="c" iso={created} />);
+                    if (typeof lat === 'number' && typeof lon === 'number') {
+                      const href = `https://maps.google.com/?q=${lat},${lon}`;
+                      parts.push(<a key="m" href={href} target="_blank" style={{ color: '#2563eb', textDecoration: 'none' }}>Map</a>);
+                    }
+                    return parts.length > 0 ? (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#6b7280' }}>
+                        {parts.map((p, i) => (
+                          <React.Fragment key={i}>
+                            {i > 0 && <span aria-hidden>•</span>}
+                            {p}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+                <Link href={`/dashboard/incidents/${it.id}`} style={{ color: '#2563eb' }}>Open</Link>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Load more pagination */}
+      {nextCursor && (
         <div style={{ marginTop: 12 }}>
-          <a href={makeUrl({ status, severity, bbox: bboxQ, since, created_before: nextCursor }, false)} style={{ color: '#2563eb' }}>Load more</a>
+          {(() => {
+            const qp = new URLSearchParams();
+            status.forEach((s) => qp.append('status', s));
+            severity.forEach((s) => qp.append('severity', s));
+            if (bboxQ) qp.set('bbox', bboxQ);
+            if (since) qp.set('since', since);
+            qp.set('limit', String(limit));
+            qp.set('created_before', nextCursor);
+            const href = `/dashboard/incidents?${qp.toString()}`;
+            return <a href={href} style={{ color: '#2563eb', textDecoration: 'none' }}>Load more</a>;
+          })()}
         </div>
       )}
+      {/* Convenience link to open current filters in JSON view */}
+      <div style={{ marginTop: 12 }}>
+        {(() => {
+          const qs = new URLSearchParams();
+          status.forEach((s) => qs.append('status', s));
+          severity.forEach((s) => qs.append('severity', s));
+          if (bboxQ) qs.set('bbox', bboxQ);
+          if (createdAfter) qs.set('created_after', createdAfter);
+          if (limit) qs.set('limit', String(limit));
+          const href = `${API_BASE}/incidents${qs.toString() ? `?${qs.toString()}` : ''}`;
+          return <a href={href} style={{ color: '#2563eb', textDecoration: 'none', fontSize: 12 }} target="_blank">Open JSON (current filters)</a>;
+        })()}
+      </div>
     </main>
   );
 }
