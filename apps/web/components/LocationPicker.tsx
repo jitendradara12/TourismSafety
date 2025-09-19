@@ -9,26 +9,50 @@ type Props = {
 
 export default function LocationPicker({ value, onChange }: Props) {
   const [loc, setLoc] = React.useState<{ lat: number; lon: number } | null>(value ?? null);
+  const [locating, setLocating] = React.useState(false);
+  const [status, setStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setLoc(value ?? null);
   }, [value]);
 
   const useMyLocation = () => {
+    if (locating) return;
+    setStatus(null);
+    setLocating(true);
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      onChange({ lat: 19.076, lon: 72.8777 });
+      const next = { lat: 19.076, lon: 72.8777 };
+      setLoc(next);
+      onChange(next);
+      setStatus('Geolocation not available. Using fallback.');
+      setLocating(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => onChange({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => onChange({ lat: 19.076, lon: 72.8777 })
+      (pos) => {
+        const next = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        setLoc(next);
+        onChange(next);
+        setStatus('Location set from device');
+        setLocating(false);
+      },
+      () => {
+        const next = { lat: 19.076, lon: 72.8777 };
+        setLoc(next);
+        onChange(next);
+        setStatus('Permission denied or unavailable. Using fallback.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
     );
   };
 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button type="button" onClick={useMyLocation} style={{ padding: '6px 10px', background: '#111827', color: 'white', borderRadius: 6, border: 'none', cursor: 'pointer' }}>Use my location</button>
+        <button type="button" onClick={useMyLocation} disabled={locating} style={{ padding: '6px 10px', background: locating ? '#6b7280' : '#111827', color: 'white', borderRadius: 6, border: 'none', cursor: locating ? 'not-allowed' : 'pointer', opacity: locating ? 0.8 : 1 }}>
+          {locating ? 'Locating…' : 'Use my location'}
+        </button>
         {loc && (
           <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#6b7280' }}>
             lat: {loc.lat.toFixed(5)}, lon: {loc.lon.toFixed(5)}
@@ -40,7 +64,7 @@ export default function LocationPicker({ value, onChange }: Props) {
         viewBox="0 0 360 180"
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Select approximate location"
+        aria-label="Select approximate location (tap or click)"
         className="bg-gray-50"
         style={{ width: '100%', height: 200, border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'crosshair' }}
         onClick={(e) => {
@@ -48,6 +72,20 @@ export default function LocationPicker({ value, onChange }: Props) {
           const rect = el.getBoundingClientRect();
           const x = ((e.clientX - rect.left) / rect.width) * 360; // 0..360
           const y = ((e.clientY - rect.top) / rect.height) * 180; // 0..180
+          const lon = x - 180;
+          const lat = 90 - y;
+          const next = { lat, lon };
+          setLoc(next);
+          onChange(next);
+        }}
+        onTouchEnd={(e) => {
+          // Touch support for mobile devices
+          if (!e.changedTouches || e.changedTouches.length === 0) return;
+          const touch = e.changedTouches[0];
+          const el = e.currentTarget as unknown as HTMLElement;
+          const rect = el.getBoundingClientRect();
+          const x = ((touch.clientX - rect.left) / rect.width) * 360;
+          const y = ((touch.clientY - rect.top) / rect.height) * 180;
           const lon = x - 180;
           const lat = 90 - y;
           const next = { lat, lon };
@@ -71,7 +109,8 @@ export default function LocationPicker({ value, onChange }: Props) {
           </g>
         )}
       </svg>
-      <div style={{ fontSize: 12, color: '#6b7280' }}>Tip: Click on the mini map to set location, or use the button to auto-detect. This is approximate and for demo use.</div>
+  <div style={{ fontSize: 12, color: '#6b7280' }}>Tip: Tap or click the mini map to set location, or use the button to auto-detect. This is approximate and for demo use.</div>
+  {status && <div style={{ fontSize: 12, color: '#6b7280' }}>{status}</div>}
     </div>
   );
 }

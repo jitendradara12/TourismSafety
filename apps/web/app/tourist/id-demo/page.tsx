@@ -51,6 +51,7 @@ export default function DigitalIdDemoPage() {
     } catch { return new Set(); }
   });
   const isRevoked = result ? revokedSet.has(result.did) : false;
+  const [showQr, setShowQr] = useState(false);
 
   const isValid = useMemo(() => {
     return name.trim() && idNumber.trim() && emPhone.trim();
@@ -204,6 +205,28 @@ export default function DigitalIdDemoPage() {
     w.document.close();
   }
 
+  function didToQrData(did: string) {
+    // Embed a small URL-like payload for scanners; purely demo
+    return `did:${did}`;
+  }
+  function renderQrSvg(data: string, size = 120) {
+    // Tiny inlined QR-like placeholder (not a full QR spec); sufficient for demo visuals offline.
+    // We draw a simple grid hash; scanners may not read it—use external link for real QR.
+    const cells = 21; // small grid
+    const cell = Math.floor(size / cells);
+    const blocks: string[] = [];
+    // Hash-based pseudo pattern
+    let h = 0;
+    for (let i = 0; i < data.length; i++) h = ((h << 5) - h) + data.charCodeAt(i);
+    for (let y = 0; y < cells; y++) {
+      for (let x = 0; x < cells; x++) {
+        const on = ((x * 31 + y * 17 + h) & 7) < 3; // ~3/8 fill
+        if (on) blocks.push(`<rect x="${x*cell}" y="${y*cell}" width="${cell}" height="${cell}" fill="#111827"/>`);
+      }
+    }
+    return { __html: `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 ${cells*cell} ${cells*cell}'><rect width='100%' height='100%' fill='#fff'/>${blocks.join('')}</svg>` };
+  }
+
   async function onShare() {
     if (!result) return;
     const data = {
@@ -349,6 +372,7 @@ export default function DigitalIdDemoPage() {
           <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
             <button onClick={verifyCredential} style={{ padding: '8px 12px', background: '#111827', color: '#fff', borderRadius: 6 }}>Verify</button>
             <button onClick={() => { setVerifyInput(''); setVerifyReport(null); }} style={{ padding: '8px 12px', background: '#e5e7eb', borderRadius: 6 }}>Clear</button>
+            <button onClick={async ()=>{ try { const t = await navigator.clipboard.readText(); setVerifyInput(t); } catch {} }} style={{ padding: '8px 12px', background: '#f3f4f6', borderRadius: 6 }}>Paste from clipboard</button>
           </div>
           {verifyReport && (
             <div style={{ marginTop: 10, padding: 12, borderRadius: 8, border: verifyReport.ok && !verifyReport.revoked ? '1px solid #bbf7d0' : '1px solid #fecaca', background: verifyReport.ok && !verifyReport.revoked ? '#ecfdf5' : '#fef2f2', color: verifyReport.ok && !verifyReport.revoked ? '#064e3b' : '#7f1d1d' }}>
@@ -386,7 +410,21 @@ export default function DigitalIdDemoPage() {
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: '#f3f4f6', borderRadius: 6 }}>
                 <input type="checkbox" checked={isRevoked} onChange={toggleRevokeCurrent} /> Revoke (demo)
               </label>
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(didToQrData(result.did))}`}
+                target="_blank"
+                style={{ padding: '8px 12px', background: '#f3f4f6', borderRadius: 6, textDecoration: 'none', color: '#111827' }}
+              >
+                Open DID QR
+              </a>
+              <button onClick={() => setShowQr((s)=>!s)} style={{ padding: '8px 12px', background: '#f3f4f6', borderRadius: 6 }}>Show inline QR</button>
             </div>
+            {showQr && (
+              <div style={{ marginTop: 10 }}>
+                <div dangerouslySetInnerHTML={renderQrSvg(didToQrData(result.did), 160)} />
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>Offline preview. Use external link for scannable QR.</div>
+              </div>
+            )}
           </div>
         </section>
       )}
