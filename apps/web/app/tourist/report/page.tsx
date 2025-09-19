@@ -159,24 +159,24 @@ export default function ReportPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Report an Incident</h1>
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 480 }}>
+      <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 12 }}>Report an Incident</h1>
+      <form className="card" onSubmit={handleSubmit} style={{ display: "grid", gap: 12, maxWidth: 640, padding: 16 }}>
         <label>
-          <div>Type</div>
+          <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Type</div>
           <input
             value={type}
             onChange={(e) => setType(e.target.value)}
             placeholder="Type"
-            style={{ border: "1px solid #d1d5db", padding: 8, borderRadius: 6, width: "100%" }}
+            style={{ border: "1px solid var(--color-border)", padding: 10, borderRadius: 8, width: "100%" }}
             required
           />
         </label>
         <label>
-          <div>Severity</div>
+          <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Severity</div>
           <select
             value={severity}
             onChange={(e) => setSeverity(e.target.value)}
-            style={{ border: "1px solid #d1d5db", padding: 8, borderRadius: 6, width: "100%" }}
+            style={{ border: "1px solid var(--color-border)", padding: 10, borderRadius: 8, width: "100%" }}
           >
             <option value="low">low</option>
             <option value="medium">medium</option>
@@ -185,28 +185,28 @@ export default function ReportPage() {
           </select>
         </label>
         <label>
-          <div>Description</div>
+          <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Description</div>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe the incident"
             rows={4}
-            style={{ border: "1px solid #d1d5db", padding: 8, borderRadius: 6, width: "100%" }}
+            style={{ border: "1px solid var(--color-border)", padding: 10, borderRadius: 8, width: "100%", resize: 'vertical' }}
           />
         </label>
         <label>
-          <div>Location</div>
+          <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Location</div>
           <LocationPicker value={chosenLoc} onChange={setChosenLoc} />
           {chosenLoc && (
             <div style={{ marginTop: 6 }}>
-              <a href={`https://maps.google.com/?q=${chosenLoc.lat},${chosenLoc.lon}`} target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontSize: 12, marginRight: 8 }}>Open in Google Maps</a>
-              <button type="button" onClick={() => { setChosenLoc(null); setLatText(''); setLonText(''); }} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #e5e7eb', background: '#ffffff', fontSize: 12 }}>Reset location</button>
+              <a href={`https://maps.google.com/?q=${chosenLoc.lat},${chosenLoc.lon}`} target="_blank" style={{ color: 'var(--color-info)', textDecoration: 'none', fontSize: 12, marginRight: 8 }}>Open in Google Maps</a>
+              <button type="button" onClick={() => { setChosenLoc(null); setLatText(''); setLonText(''); }} className="btn btn--secondary" style={{ padding: '6px 10px' }}>Reset location</button>
             </div>
           )}
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>
-            <div>Latitude</div>
+            <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Latitude</div>
             <input
               inputMode="decimal"
               placeholder="e.g., 19.076"
@@ -220,12 +220,12 @@ export default function ReportPage() {
                   setChosenLoc((prev) => ({ lat: clamped, lon: prev?.lon ?? 72.8777 }));
                 }
               }}
-              style={{ border: '1px solid #d1d5db', padding: 8, borderRadius: 6, width: '100%' }}
+              style={{ border: '1px solid var(--color-border)', padding: 10, borderRadius: 8, width: '100%' }}
             />
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Range: -90 to 90</div>
           </label>
           <label>
-            <div>Longitude</div>
+            <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Longitude</div>
             <input
               inputMode="decimal"
               placeholder="e.g., 72.8777"
@@ -239,13 +239,13 @@ export default function ReportPage() {
                   setChosenLoc((prev) => ({ lon: clamped, lat: prev?.lat ?? 19.076 } as any));
                 }
               }}
-              style={{ border: '1px solid #d1d5db', padding: 8, borderRadius: 6, width: '100%' }}
+              style={{ border: '1px solid var(--color-border)', padding: 10, borderRadius: 8, width: '100%' }}
             />
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Range: -180 to 180</div>
           </label>
         </div>
         <label>
-          <div>Attach photo (optional)</div>
+          <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Attach photo (optional)</div>
           <input
             type="file"
             accept="image/*,.pdf"
@@ -268,24 +268,19 @@ export default function ReportPage() {
             </div>
           )}
         </label>
-        <button
-          type="submit"
-          disabled={busy}
-          style={{
-            padding: "8px 12px",
-            background: "#2563eb",
-            color: "white",
-            borderRadius: 6,
-            border: "none",
-            cursor: busy ? "not-allowed" : "pointer",
-            opacity: busy ? 0.7 : 1,
-          }}
-        >
-          {busy ? "Submitting…" : "Submit"}
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="submit"
+            disabled={busy}
+            className="btn btn--primary"
+            style={{ opacity: busy ? 0.7 : 1 }}
+          >
+            {busy ? "Submitting…" : "Submit"}
+          </button>
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={async () => {
             const coords = chosenLoc ?? { lat: 19.076, lon: 72.8777 };
             const preview = {
               type,
@@ -298,10 +293,10 @@ export default function ReportPage() {
             };
             try { await navigator.clipboard.writeText(JSON.stringify(preview, null, 2)); setMsg('Copied report JSON'); } catch { setMsg('Could not copy'); }
           }}
-          style={{ padding: '8px 12px', background: '#f3f4f6', borderRadius: 6, border: '1px solid #e5e7eb' }}
-        >
-          Copy report JSON
-        </button>
+          >
+            Copy report JSON
+          </button>
+        </div>
         {msg && <div style={{ fontSize: 12, color: "#6b7280" }}>{msg}</div>}
         <div style={{ fontSize: 12, color: "#6b7280" }}>
           Demo note: uses your location if permitted; otherwise a safe fallback.
