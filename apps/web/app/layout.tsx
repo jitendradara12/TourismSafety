@@ -22,7 +22,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   } catch {}
   return (
     <html lang="en">
-      <head />
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossOrigin=""
+        />
+      </head>
       <body style={{ margin: 0, fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif' }}>
         <style dangerouslySetInnerHTML={{ __html: `
           /* Base (existing tokens remain for backward compatibility) */
