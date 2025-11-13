@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 const ThemePaletteToggle = dynamic(() => import('../components/ThemePaletteToggle'), { ssr: false });
 
-export const metadata = { title: 'SIH Safety Platform' };
+export const metadata = { title: 'Safety Platform' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -122,7 +122,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <header className="site-header">
           <nav className="nav container">
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <a href="/" style={{ fontWeight: 800, letterSpacing: '-0.02em' }}>SIH Safety</a>
+              <a href="/" style={{ fontWeight: 800, letterSpacing: '-0.02em' }}>Safety</a>
               <div className="nav-links" style={{ display: 'flex', gap: 6 }}>
                 <a href="/dashboard/incidents">Dashboard</a>
                 <a href="/tourist/report">Report</a>
