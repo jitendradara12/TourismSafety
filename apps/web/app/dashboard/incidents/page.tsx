@@ -267,6 +267,9 @@ export default async function IncidentsPage({ searchParams }: { searchParams?: {
             status={status}
             severity={severity}
             since={since}
+            bbox={bboxQ}
+            limit={limit}
+            sort={sort}
           />
         </div>
       </section>

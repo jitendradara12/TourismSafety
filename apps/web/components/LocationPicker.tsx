@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import 'leaflet/dist/leaflet.css';
 
 type Props = {
   value?: { lat: number; lon: number } | null;
