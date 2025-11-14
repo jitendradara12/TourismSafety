@@ -7,7 +7,6 @@ export const metadata = { title: 'Safety Platform' };
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   let apiOk = false;
-  let apiDemo = false;
   try {
     // Add a short timeout so the whole layout doesn't hang if API is slow
     const controller = new AbortController();
@@ -16,8 +15,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     clearTimeout(t);
     if (res.ok) {
       apiOk = true;
-      const j = (await res.json()) as any;
-      apiDemo = Boolean(j?.demo);
     }
   } catch {}
   return (
@@ -69,11 +66,27 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           html.theme-mint { --color-primary:#16a34a; --color-accent:#34d399; --color-secondary:#0891b2; --color-bg:#f6fffa; --color-surface:#ffffff; --color-on-primary:#ffffff; --color-muted:#374151; }
 
           /* Utilities (additive) */
-          .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.56rem 1rem; border-radius:var(--radius-md); font-weight:600; transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease, background-color var(--transition-fast) ease; cursor:pointer; border: none; white-space: nowrap; }
-          .btn--primary{ background:var(--color-primary); color:var(--color-on-primary); box-shadow:var(--shadow-small); }
-          .btn--primary:hover{ transform:translateY(-3px); box-shadow:var(--shadow-medium); background:linear-gradient(90deg,var(--color-primary),var(--color-accent)); }
-          .btn--secondary{ background:transparent; color:var(--color-primary); border:1px solid var(--color-border); }
-          .btn--ghost{ background:transparent; color:var(--color-muted); }
+          .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.45rem; padding:.55rem 1rem; border-radius:var(--radius-md); font-weight:600; font-size:.92rem; letter-spacing:-0.01em; transition: background var(--transition-fast) ease, color var(--transition-fast) ease, border var(--transition-fast) ease, transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease; cursor:pointer; border:1px solid transparent; white-space:nowrap; background:var(--color-surface); color:var(--color-on-surface); box-shadow:var(--shadow-small); text-decoration:none; }
+          .btn:disabled, .btn[aria-disabled="true"]{ opacity:.55; cursor:not-allowed; box-shadow:none; transform:none; }
+          .btn[data-busy="true"]{ pointer-events:none; opacity:.72; }
+          .btn--primary{ background:linear-gradient(135deg,color-mix(in srgb,var(--color-primary) 90%, var(--color-accent)),color-mix(in srgb,var(--color-accent) 70%, var(--color-primary))); color:var(--color-on-primary); border-color:color-mix(in srgb,var(--color-primary) 65%, transparent); }
+          .btn--primary:hover:not(:disabled){ transform:translateY(-2px); box-shadow:var(--shadow-medium); }
+          .btn--secondary{ background:color-mix(in srgb,var(--color-primary) 6%, var(--color-surface)); color:var(--color-on-surface); border-color:color-mix(in srgb,var(--color-primary) 20%, transparent); }
+          .btn--outline{ background:transparent; color:var(--color-on-surface); border-color:var(--color-border); box-shadow:none; }
+          .btn--ghost{ background:transparent; border-color:transparent; box-shadow:none; color:var(--color-muted); }
+          .btn--ghost:hover{ background:color-mix(in srgb,var(--color-primary) 10%, var(--color-surface)); color:var(--color-on-surface); }
+          .btn--success{ background:color-mix(in srgb,var(--color-success) 90%, #ffffff); border-color:color-mix(in srgb,var(--color-success) 45%, transparent); color:#ffffff; }
+          .btn--danger{ background:color-mix(in srgb,var(--color-error) 92%, #ffffff); border-color:color-mix(in srgb,var(--color-error) 45%, transparent); color:#ffffff; }
+          .btn--info{ background:color-mix(in srgb,var(--color-info) 90%, #ffffff); border-color:color-mix(in srgb,var(--color-info) 40%, transparent); color:#ffffff; }
+          .btn--chip{ border-radius:999px; }
+          .btn--pill{ border-radius:999px; }
+          .btn--sm{ padding:.35rem .75rem; font-size:.82rem; }
+          .btn--xs{ padding:.25rem .6rem; font-size:.75rem; }
+          .btn--icon{ width:36px; height:36px; padding:0; border-radius:999px; }
+          .btn--full{ width:100%; }
+          .btn--light{ background:color-mix(in srgb,var(--color-surface) 88%, var(--color-bg)); color:var(--color-on-surface); border-color:var(--color-border); box-shadow:none; }
+          .btn.btn--secondary[data-active="true"], .btn.btn--outline[data-active="true"]{ background:color-mix(in srgb,var(--color-primary) 14%, var(--color-surface)); border-color:color-mix(in srgb,var(--color-primary) 45%, transparent); color:var(--color-on-surface); box-shadow:var(--shadow-medium); }
+          .btn__spinner{ width:1rem; height:1rem; border-radius:50%; border:2px solid color-mix(in srgb, currentColor 40%, transparent); border-top-color:currentColor; animation:btnSpin .8s linear infinite; }
           .text-muted{ color: var(--color-muted); }
           .card{ background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); box-shadow:var(--shadow-small); transition:transform .18s ease, box-shadow .18s ease; overflow: hidden; }
           .card:hover{ transform:translateY(-6px); box-shadow:var(--shadow-medium); }
@@ -84,6 +97,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           * { box-sizing: border-box; }
           :focus-visible{ outline: 3px solid color-mix(in srgb, var(--color-primary) 40%, transparent); outline-offset: 2px; border-radius: 6px; }
           @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+          @keyframes btnSpin { to { transform: rotate(360deg); } }
           @media (prefers-reduced-motion: reduce){ * { transition:none !important; animation:none !important; } }
           @media (max-width: 768px) {
             .container { padding: 0 12px; }
@@ -134,9 +148,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 <span style={{ width: 8, height: 8, borderRadius: 9999, background: apiOk ? 'var(--color-success)' : 'var(--color-error)' }} />
                 API
               </span>
-              {apiDemo && (
-                <span title="Demo mode" className="badge" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fecaca' }}>DEMO</span>
-              )}
               <ThemePaletteToggle />
             </div>
           </nav>

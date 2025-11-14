@@ -13,7 +13,8 @@ export default function CopyPageUrlButton() {
       type="button"
       onClick={async () => { try { await navigator.clipboard.writeText(href); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch {} }}
       title="Copy page URL"
-      style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #e5e7eb', background: copied ? '#e0f2fe' : '#ffffff', color: '#111827', fontSize: 12 }}
+      className={`btn ${copied ? 'btn--success' : 'btn--secondary'} btn--xs`}
+      data-busy={copied ? 'true' : undefined}
     >
       {copied ? 'Copied Link' : 'Copy Page URL'}
     </button>

@@ -22,16 +22,9 @@ export default function CopyButton({ value, label = "Copy" }: Props) {
     <button
       type="button"
       onClick={onClick}
-      style={{
-        padding: "2px 8px",
-        background: copied ? "#16a34a" : "#374151",
-        color: "white",
-        borderRadius: 6,
-        border: "none",
-        cursor: "pointer",
-        fontSize: 12,
-      }}
+      className={`btn ${copied ? 'btn--success' : 'btn--primary'} btn--xs`}
       title={copied ? "Copied" : "Copy to clipboard"}
+      data-busy={copied ? 'true' : undefined}
     >
       {copied ? "Copied" : label}
     </button>

@@ -20,17 +20,18 @@ export default function RefreshNowButton() {
   };
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <button
         type="button"
         onClick={onClick}
         disabled={busy}
+        data-busy={busy ? 'true' : undefined}
         title="Refresh now"
-        style={{ padding: '6px 10px', background: '#f3f4f6', color: '#111827', borderRadius: 6, border: '1px solid #e5e7eb', cursor: busy ? 'default' : 'pointer' }}
+        className="btn btn--secondary btn--sm"
       >
         {busy ? 'Refreshing…' : 'Refresh now'}
       </button>
-      {ok && <span style={{ fontSize: 12, color: '#065f46' }}>{ok}</span>}
+      {ok && <span style={{ fontSize: 12, color: 'var(--color-success)' }}>{ok}</span>}
     </span>
   );
 }

@@ -27,6 +27,37 @@ import CopyButton from '../../../components/CopyButton';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
+const quickGroupStyle: React.CSSProperties = {
+  border: '1px solid var(--color-border)',
+  borderRadius: 14,
+  background: 'color-mix(in srgb, var(--color-surface) 96%, transparent)',
+  padding: 16,
+  display: 'grid',
+  gap: 12,
+  minHeight: 160,
+};
+
+const quickTitleStyle: React.CSSProperties = {
+  fontSize: 15,
+  fontWeight: 700,
+  letterSpacing: '-0.01em',
+  color: 'var(--color-on-surface)',
+};
+
+const quickDescStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 12,
+  color: 'var(--color-muted)',
+};
+
+const quickButtonRowStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  alignItems: 'center',
+  justifyContent: 'flex-start',
+};
+
 type IncidentItem = {
   id: string;
   type: string;
@@ -150,36 +181,72 @@ export default async function IncidentsPage({ searchParams }: { searchParams?: {
         </div>
       </section>
 
+      {/* i commented this because it's totally not needed */}
       {/* Quick Actions Toolbar */}
-      <section className="card" style={{ marginBottom: 20 }}>
+      {/* <section className="card" style={{ marginBottom: 20 }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: 'var(--color-on-surface)' }}>Quick Actions</h3>
         </div>
-        <div style={{ padding: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <CreateTestIncidentButton apiBase={API_BASE} />
-          {demo && <SeedDemoIncidentsButton apiBase={API_BASE} count={10} />}
-          <div style={{ width: '1px', height: 24, background: 'var(--color-border)', margin: '0 4px' }} />
-          <FilterPresets status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} sort={sort} />
-          <SearchIncidentById />
-          <div style={{ width: '1px', height: 24, background: 'var(--color-border)', margin: '0 4px' }} />
-          <AutoRefreshToggle />
-          <RefreshNowButton />
-          <div style={{ flex: 1 }} />
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <ExportIncidentsCsvButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
-            <ExportIncidentsJsonButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
-            <ExportIncidentsGeoJsonButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
-            <CopyExportUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
-            <CopyJsonUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
-            <CopyListCurlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
-            <CopyPageUrlButton />
-            <CopyStatsUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
-            <OpenStatsLink apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
-            <CopyStatsCurlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
-            <StaticMapPreviewButton items={items.map((it: any) => ({ id: it.id, coords: Array.isArray(it.coords) ? it.coords : [it.lon ?? 0, it.lat ?? 0], severity: it.severity }))} />
+        <div style={{ padding: 16, display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+          <div style={quickGroupStyle}>
+            <div>
+              <div style={quickTitleStyle}>Capture &amp; Monitor</div>
+              <p style={quickDescStyle}>Trigger demo incidents and control refresh cadence.</p>
+            </div>
+            <div style={quickButtonRowStyle}>
+              <CreateTestIncidentButton apiBase={API_BASE} />
+              {demo && <SeedDemoIncidentsButton apiBase={API_BASE} count={10} />}
+            </div>
+            <div style={quickButtonRowStyle}>
+              <AutoRefreshToggle />
+              <RefreshNowButton />
+            </div>
+          </div>
+          <div style={quickGroupStyle}>
+            <div>
+              <div style={quickTitleStyle}>Filters &amp; Lookup</div>
+              <p style={quickDescStyle}>Save presets or jump directly to a specific incident.</p>
+            </div>
+            <div style={quickButtonRowStyle}>
+              <FilterPresets status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} sort={sort} />
+            </div>
+            <div style={quickButtonRowStyle}>
+              <SearchIncidentById />
+            </div>
+          </div>
+          <div style={quickGroupStyle}>
+            <div>
+              <div style={quickTitleStyle}>Downloads &amp; Visuals</div>
+              <p style={quickDescStyle}>Grab filtered datasets or snapshot a static map.</p>
+            </div>
+            <div style={quickButtonRowStyle}>
+              <ExportIncidentsCsvButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
+              <ExportIncidentsJsonButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
+              <ExportIncidentsGeoJsonButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
+            </div>
+            <div style={quickButtonRowStyle}>
+              <StaticMapPreviewButton items={items.map((it: any) => ({ id: it.id, coords: Array.isArray(it.coords) ? it.coords : [it.lon ?? 0, it.lat ?? 0], severity: it.severity }))} />
+            </div>
+          </div>
+          <div style={quickGroupStyle}>
+            <div>
+              <div style={quickTitleStyle}>Share &amp; API Links</div>
+              <p style={quickDescStyle}>Send URLs or cURL snippets to teammates and pipelines.</p>
+            </div>
+            <div style={quickButtonRowStyle}>
+              <CopyExportUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
+              <CopyJsonUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
+              <CopyPageUrlButton />
+            </div>
+            <div style={quickButtonRowStyle}>
+              <CopyListCurlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} limit={limit} />
+              <CopyStatsUrlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
+              <OpenStatsLink apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
+              <CopyStatsCurlButton apiBase={API_BASE} status={status} severity={severity} bbox={bboxQ} since={since} />
+            </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Interactive Map Overview */}
       <section className="card" style={{ marginBottom: 20 }}>
