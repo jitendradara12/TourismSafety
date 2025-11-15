@@ -16,11 +16,32 @@ export default function ReportPage() {
   const [description, setDescription] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
-  const [chosenLoc, setChosenLoc] = React.useState<{ lat: number; lon: number } | null>(null);
+  const [chosenLoc, setChosenLocState] = React.useState<{ lat: number; lon: number } | null>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const [fileHash, setFileHash] = React.useState<string | null>(null);
   const [latText, setLatText] = React.useState<string>("");
   const [lonText, setLonText] = React.useState<string>("");
+  const userChosenLocationRef = React.useRef(false);
+
+  const setChosenLoc = React.useCallback(
+    (
+      value: React.SetStateAction<{ lat: number; lon: number } | null>,
+      options?: { user?: boolean }
+    ) => {
+      if (options?.user) {
+        userChosenLocationRef.current = true;
+      }
+      setChosenLocState(value);
+    },
+    [setChosenLocState]
+  );
+
+  const handlePickerChange = React.useCallback(
+    (next: { lat: number; lon: number } | null) => {
+      setChosenLoc(next, { user: true });
+    },
+    [setChosenLoc]
+  );
 
   async function sha256Hex(data: ArrayBuffer) {
     const hash = await crypto.subtle.digest("SHA-256", data);
@@ -117,45 +138,34 @@ export default function ReportPage() {
     }
   }, [chosenLoc]);
 
-  // Optional: initialize with current position on first load for convenience
+  // Apply query param defaults for non-location fields on load
   React.useEffect(() => {
-    if (chosenLoc) return;
-    // Prefill from URL if provided: ?type=&severity=&description=&lat=&lon=
+    const t = searchParams?.get('type');
+    const sev = searchParams?.get('severity');
+    const desc = searchParams?.get('description');
+    if (t) setType(t);
+    if (sev) setSeverity(sev);
+    if (desc) setDescription(desc);
+  }, [searchParams]);
+
+  // Optional: initialize location from query params; no auto geolocation to avoid overriding user clicks
+  React.useEffect(() => {
+    if (userChosenLocationRef.current) return;
     try {
-      const t = searchParams?.get('type');
-      const sev = searchParams?.get('severity');
-      const desc = searchParams?.get('description');
       const latQ = searchParams?.get('lat');
       const lonQ = searchParams?.get('lon');
-      if (t) setType(t);
-      if (sev) setSeverity(sev);
-      if (desc) setDescription(desc);
       const latNum = latQ != null ? Number(latQ) : NaN;
       const lonNum = lonQ != null ? Number(lonQ) : NaN;
       if (Number.isFinite(latNum) && Number.isFinite(lonNum)) {
         const clampedLat = Math.max(-90, Math.min(90, latNum));
         const clampedLon = Math.max(-180, Math.min(180, lonNum));
         const next = { lat: clampedLat, lon: clampedLon };
-        setChosenLoc(next);
+        setChosenLoc(next, { user: true });
         setLatText(String(next.lat));
         setLonText(String(next.lon));
-        return; // if URL provided coords, skip geolocation
       }
     } catch {}
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const next = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-          setChosenLoc(next);
-          setLatText(String(next.lat));
-          setLonText(String(next.lon));
-        },
-        () => {
-          // keep empty if user denies; they can still use the button or manual inputs
-        }
-      );
-    }
-  }, []);
+  }, [searchParams, setChosenLoc]);
 
   return (
     <main style={{ padding: 24 }}>
@@ -196,11 +206,23 @@ export default function ReportPage() {
         </label>
         <label>
           <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 4 }}>Location</div>
-          <LocationPicker value={chosenLoc} onChange={setChosenLoc} />
+          <LocationPicker value={chosenLoc} onChange={handlePickerChange} />
           {chosenLoc && (
             <div style={{ marginTop: 6 }}>
               <a href={`https://maps.google.com/?q=${chosenLoc.lat},${chosenLoc.lon}`} target="_blank" style={{ color: 'var(--color-info)', textDecoration: 'none', fontSize: 12, marginRight: 8 }}>Open in Google Maps</a>
-              <button type="button" onClick={() => { setChosenLoc(null); setLatText(''); setLonText(''); }} className="btn btn--secondary" style={{ padding: '6px 10px' }}>Reset location</button>
+              <button
+                type="button"
+                onClick={() => {
+                  userChosenLocationRef.current = false;
+                  setChosenLoc(null);
+                  setLatText('');
+                  setLonText('');
+                }}
+                className="btn btn--secondary"
+                style={{ padding: '6px 10px' }}
+              >
+                Reset location
+              </button>
             </div>
           )}
         </label>
@@ -217,7 +239,7 @@ export default function ReportPage() {
                 const num = Number(v);
                 if (Number.isFinite(num)) {
                   const clamped = Math.max(-90, Math.min(90, num));
-                  setChosenLoc((prev) => ({ lat: clamped, lon: prev?.lon ?? 72.8777 }));
+                  setChosenLoc((prev) => ({ lat: clamped, lon: prev?.lon ?? 72.8777 }), { user: true });
                 }
               }}
               style={{ border: '1px solid var(--color-border)', padding: 10, borderRadius: 8, width: '100%' }}
@@ -236,7 +258,7 @@ export default function ReportPage() {
                 const num = Number(v);
                 if (Number.isFinite(num)) {
                   const clamped = Math.max(-180, Math.min(180, num));
-                  setChosenLoc((prev) => ({ lon: clamped, lat: prev?.lat ?? 19.076 } as any));
+                  setChosenLoc((prev) => ({ lon: clamped, lat: prev?.lat ?? 19.076 } as any), { user: true });
                 }
               }}
               style={{ border: '1px solid var(--color-border)', padding: 10, borderRadius: 8, width: '100%' }}

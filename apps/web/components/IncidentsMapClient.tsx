@@ -278,7 +278,7 @@ export default function IncidentsMapClient({ items, status, severity, since, bbo
 	const renderedCount = showLocalReports ? items.length + localReports.length : items.length;
 
 	return (
-		<div className="relative w-full" style={{ width: '100%' }}>
+		<div className="relative w-full" style={{ width: '100%', position: 'relative', isolation: 'isolate' }}>
 			<div ref={mapEl} style={{ width: '100%', height: '420px', borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden' }} />
 			{activeBbox && (
 				<div
@@ -286,12 +286,14 @@ export default function IncidentsMapClient({ items, status, severity, since, bbo
 						position: 'absolute',
 						top: 16,
 						left: 16,
+						zIndex: 1200,
 						padding: '10px 12px',
 						background: 'color-mix(in srgb, var(--color-surface) 88%, #ffffff)',
 						borderRadius: 10,
 						boxShadow: '0 4px 12px rgba(15,23,42,0.14)',
 						border: '1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border))',
 						maxWidth: 260,
+						pointerEvents: 'auto',
 					}}
 				>
 					<div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, color: 'var(--color-on-surface)' }}>Area filter active</div>
@@ -316,12 +318,14 @@ export default function IncidentsMapClient({ items, status, severity, since, bbo
 						position: 'absolute',
 						top: 16,
 						right: 16,
+						zIndex: 1200,
 						padding: '12px 14px',
 						background: 'color-mix(in srgb, var(--color-surface) 94%, #ffffff)',
 						borderRadius: 10,
 						boxShadow: '0 4px 16px rgba(15,23,42,0.15)',
 						border: '1px solid color-mix(in srgb, var(--color-secondary) 35%, var(--color-border))',
 						width: 240,
+						pointerEvents: 'auto',
 					}}
 				>
 					<div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-on-surface)' }}>Past reports (local)</div>
@@ -352,7 +356,7 @@ export default function IncidentsMapClient({ items, status, severity, since, bbo
 				</div>
 			)}
 			{renderedCount === 0 && (
-				<div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+				<div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 20 }}>
 					<div style={{ background: 'rgba(255,255,255,0.7)', padding: '4px 8px', borderRadius: 6, fontSize: 12, color: '#6b7280' }}>No data to display</div>
 				</div>
 			)}
